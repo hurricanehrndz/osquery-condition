@@ -2,3 +2,6 @@ osquery-condition
 build/
 *.zip
 vendor/
+.envrc
+.devenv/
+.direnv/
