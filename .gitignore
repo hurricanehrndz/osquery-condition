@@ -5,3 +5,5 @@ vendor/
 .envrc
 .devenv/
 .direnv/
+
+build-info.json

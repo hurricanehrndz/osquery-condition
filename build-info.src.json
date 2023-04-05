@@ -1,0 +1,10 @@
+{
+  "distribution_style": false,
+  "identifier": "com.yelpcorp.osquery-conditions",
+  "install_location": "/",
+  "name": "",
+  "ownership": "recommended",
+  "postinstall_action": "none",
+  "suppress_bundle_relocation": true,
+  "version": "1.0"
+}
