@@ -1,3 +1,6 @@
+/*
+osquery-condition appends MunkiConditions from osquery data
+*/
 package main
 
 import (
@@ -11,11 +14,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/groob/plist"
+	"howett.net/plist"
 	osquery "github.com/kolide/osquery-go"
 	"github.com/pkg/errors"
 )
-
+const conditionalItemsFile = "/Library/Managed Installs/ConditionalItems.plist"
 var version = "dev"
 
 func main() {
@@ -124,30 +127,29 @@ func (c *OsqueryClient) RunQueries(queries ...string) (<-chan map[string]string,
 	return responses, nil
 }
 
-type MunkiConditions map[string][]string
+type MunkiConditions map[string]interface{}
 
 func (c *MunkiConditions) Load() error {
-	f, err := os.Open("/Library/Managed Installs/ConditionalItems.plist")
+	f, err := ioutil.ReadFile(conditionalItemsFile)
 	if err != nil {
 		return errors.Wrap(err, "load ConditionalItems plist")
 	}
 
-	if err := plist.NewDecoder(f).Decode(c); err != nil {
+	if _, err := plist.Unmarshal(f, c); err != nil {
 		return errors.Wrap(err, "decode ConditionalItems plist")
 	}
-	return f.Close()
+	return nil
 }
 
 func (c *MunkiConditions) Save() error {
-	f, err := os.OpenFile("/Library/Managed Installs/ConditionalItems.plist", os.O_CREATE|os.O_WRONLY, 0644)
+	serialized, err := plist.MarshalIndent(c, plist.XMLFormat, "  ")
 	if err != nil {
-		return errors.Wrap(err, "open ConditionalItems plist for saving")
-	}
-
-	enc := plist.NewEncoder(f)
-	enc.Indent("  ")
-	if err := enc.Encode(c); err != nil {
 		return errors.Wrap(err, "encode ConditionalItems plist")
 	}
-	return f.Close()
+
+	err = ioutil.WriteFile(conditionalItemsFile, serialized, 0644)
+	if err != nil {
+		return errors.Wrap(err, "encode ConditionalItems plist")
+	}
+	return nil
 }

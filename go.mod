@@ -3,9 +3,9 @@ module github.hcom/groob/osquery-condition
 go 1.20
 
 require (
-	github.com/groob/plist v0.0.0-20171013152701-7b367e0aa692
 	github.com/kolide/osquery-go v0.0.0-20171018215502-03a792fcca9a
 	github.com/pkg/errors v0.8.0
+	howett.net/plist v1.0.0
 )
 
 require (

@@ -5,8 +5,7 @@ github.com/Microsoft/go-winio v0.4.5/go.mod h1:VhR8bwka0BXejwEJY73c50VrPtXAaKcyv
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/groob/plist v0.0.0-20171013152701-7b367e0aa692 h1:F3uWF39OwKCeQswABIG9NCYJ1+yAzA9+Smd3QphihjA=
-github.com/groob/plist v0.0.0-20171013152701-7b367e0aa692/go.mod h1:qg2Nek0ND/hIr+nY8H1oVqEW2cLzVVNaAQ0QexOyjyc=
+github.com/jessevdk/go-flags v1.4.0/go.mod h1:4FA24M0QyGHXBuZZK/XkWh8h0e1EYbRYJSGM75WSRxI=
 github.com/kolide/osquery-go v0.0.0-20171018215502-03a792fcca9a h1:izv1qhaed/JSsBNIaM0D8P43OmmlbPon39WDuSyp8KE=
 github.com/kolide/osquery-go v0.0.0-20171018215502-03a792fcca9a/go.mod h1:8yxnhjTbIZ1Il2yuRiaWoGVbBrk84j/MKG5Wkpx2CrM=
 github.com/pkg/errors v0.8.0 h1:WdK/asTD0HN+q6hsWO3/vpuAkAr+tw6aNJNDFFf0+qw=
@@ -23,6 +22,9 @@ github.com/stretchr/testify v1.8.2/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o
 golang.org/x/sys v0.0.0-20171027130407-80ad69fa329a h1:4R+CZVAnkC1BdgiVc32EtsVHMBPUpxIyddgjUOtL+T4=
 golang.org/x/sys v0.0.0-20171027130407-80ad69fa329a/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
+gopkg.in/yaml.v1 v1.0.0-20140924161607-9f9df34309c0/go.mod h1:WDnlLJ4WF5VGsH/HVa3CI79GS0ol3YnhVnKP89i0kNg=
 gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
 gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
 gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
+howett.net/plist v1.0.0 h1:7CrbWYbPPO/PyNy38b2EB/+gYbjCe2DXBxgtOOZbSQM=
+howett.net/plist v1.0.0/go.mod h1:lqaXoTrLY4hg8tnEzNru53gicrbv7rrk+2xJA/7hw9g=
