@@ -2,27 +2,27 @@
 VERSION := 0.1.0
 TITLE := osquery-condition
 OUTPUT := ./build
-
-$(OUTPUT):
-	mkdir -p $@
+$(eval APP_SIGNING_ID=$(shell security find-identity -p basic -v | sed -n -r 's#.*Developer ID Application: (.*)"#\1#p'|head -1))
 
 .PHONY:
-binary: $(OUTPUT)/apple/$(TITLE)
+apple: $(OUTPUT)/apple/$(TITLE)
 $(OUTPUT)/apple/$(TITLE): main.go go.mod
 	@mkdir -p $(@D)
 	GOOS=darwin GOARCH=arm64 go build -o $@ -ldflags "-X main.version=$(VERSION) -X main.gitHash=`git rev-parse HEAD`" ./*.go
+	codesign --deep --force --options=runtime -i com.yelpcorp.osquery-condition --sign "Developer ID Application: $(APP_SIGNING_ID)" --timestamp $@
 
+.PHONY:
+intel:
 build/intel/$(TITLE): main.go go.mod
 	@mkdir -p $(@D)
 	GOOS=darwin GOARCH=amd64 go build -o $@ -ldflags "-X main.version=$(VERSION) -X main.gitHash=`git rev-parse HEAD`" ./*.go
+	codesign --deep --force --options=runtime -i com.yelpcorp.osquery-condition --sign "Developer ID Application: $(APP_SIGNING_ID)" --timestamp $@
 
 .PHONY:
-build: build/$(TITLE)
+bin: build/$(TITLE)
 build/$(TITLE): build/intel/$(TITLE) build/apple/$(TITLE)
 	@lipo -create -output $(@) build/intel/$(TITLE) build/apple/$(TITLE)
-	$(eval SIGNING_ID=$(shell security find-identity -p basic -v | sed -n -r 's#.*Developer ID Application: (.*)"#\1#p'|head -1))
-	@echo "Using signing id: $(SIGNING_ID)"
-	@codesign --deep --force --options=runtime -i com.yelpcorp.osquery-condition --sign "Developer ID Application: $(SIGNING_ID)" --timestamp build/$(TITLE)
+	codesign --deep --force --options=runtime -i com.yelpcorp.osquery-condition --sign "Developer ID Application: $(APP_SIGNING_ID)" --timestamp $@
 
 build-info.json:
 	@sed  -E 's#(.*name.: ).*#\1"$(TITLE)-$(VERSION).pkg",#g;s#(.*version.: ).*#\1"$(VERSION)"#' \
