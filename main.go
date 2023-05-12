@@ -21,6 +21,10 @@ import (
 const conditionalItemsFile = "/Library/Managed Installs/ConditionalItems.plist"
 var version = "dev"
 
+func printSlice(s []string) {
+	fmt.Printf("len=%d cap=%d %v\n", len(s), cap(s), s)
+}
+
 func main() {
 	var (
 		flQueries    = flag.String("queries", "", "path to line delimited query file")
@@ -63,10 +67,15 @@ func main() {
 
 	// range over the response channel and format all the responses as
 	// conditions.
+	res := map[string][]string{}
 	for r := range resp {
 		for k, v := range r {
-			conditions[fmt.Sprintf("osquery_%s", k)] = []string{v}
+			res[k] = append(res[k], v)
 		}
+	}
+
+	for k, v := range res {
+		conditions[fmt.Sprintf("osquery_%s", k)] = v
 	}
 
 	if err := conditions.Save(); err != nil {
@@ -127,8 +136,10 @@ func (c *OsqueryClient) RunQueries(queries ...string) (<-chan map[string]string,
 	return responses, nil
 }
 
+// MunkiConditions is a data structure to hold confitional information.
 type MunkiConditions map[string]interface{}
 
+// Load populates datastructure with existing conditional information found on disk.
 func (c *MunkiConditions) Load() error {
 	f, err := ioutil.ReadFile(conditionalItemsFile)
 	if err != nil {
@@ -141,6 +152,8 @@ func (c *MunkiConditions) Load() error {
 	return nil
 }
 
+
+// Save writes to disk to conditional infomation held in variable of type MunkiConditions.
 func (c *MunkiConditions) Save() error {
 	serialized, err := plist.MarshalIndent(c, plist.XMLFormat, "  ")
 	if err != nil {
