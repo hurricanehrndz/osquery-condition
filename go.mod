@@ -1,16 +1,28 @@
-module github.hcom/groob/osquery-condition
+module github.com/hurricanehrndz/osquery-condition
 
-go 1.20
+go 1.27.2
+
+tool github.com/ptgoetz/go-versionbump/cmd/versionbump
 
 require (
-	github.com/kolide/osquery-go v0.0.0-20171018215502-03a792fcca9a
-	github.com/pkg/errors v0.8.0
-	howett.net/plist v1.0.0
+	github.com/osquery/osquery-go v0.0.0-20260630173615-eb39ad3443df
+	howett.net/plist v1.0.1
 )
 
 require (
-	git.apache.org/thrift.git v0.0.0-20170711211005-0dd823580c78 // indirect
-	github.com/Microsoft/go-winio v0.4.5 // indirect
-	github.com/stretchr/testify v1.8.2 // indirect
-	golang.org/x/sys v0.0.0-20171027130407-80ad69fa329a // indirect
+	github.com/Microsoft/go-winio v0.6.2 // indirect
+	github.com/apache/thrift v0.23.0 // indirect
+	github.com/go-logr/logr v1.2.4 // indirect
+	github.com/go-logr/stdr v1.2.2 // indirect
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/pkg/errors v0.8.0 // indirect
+	github.com/ptgoetz/go-versionbump v0.7.1 // indirect
+	github.com/spf13/cobra v1.8.1 // indirect
+	github.com/spf13/pflag v1.0.5 // indirect
+	go.opentelemetry.io/otel v1.16.0 // indirect
+	go.opentelemetry.io/otel/metric v1.16.0 // indirect
+	go.opentelemetry.io/otel/trace v1.16.0 // indirect
+	golang.org/x/sys v0.25.0 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

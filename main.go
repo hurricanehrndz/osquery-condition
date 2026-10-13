@@ -1,168 +1,192 @@
-/*
-osquery-condition appends MunkiConditions from osquery data
-*/
+// Command osquery-condition runs osquery queries through a running osqueryd
+// and merges the results into Munki's ConditionalItems.plist, so manifests can
+// use them as conditions. It is meant to run as a Munki preflight script.
 package main
 
 import (
 	"bufio"
-	"bytes"
+	"errors"
 	"flag"
 	"fmt"
-	"io"
-	"io/ioutil"
+	"io/fs"
 	"log"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
+	osquery "github.com/osquery/osquery-go"
 	"howett.net/plist"
-	osquery "github.com/kolide/osquery-go"
-	"github.com/pkg/errors"
 )
-const conditionalItemsFile = "/Library/Managed Installs/ConditionalItems.plist"
-var version = "dev"
 
-func printSlice(s []string) {
-	fmt.Printf("len=%d cap=%d %v\n", len(s), cap(s), s)
-}
+// version is the release version, managed by `go tool versionbump`
+// (see versionbump.yaml).
+const version = "0.1.0"
+
+const (
+	conditionalItemsPath = "/Library/Managed Installs/ConditionalItems.plist"
+	keyPrefix            = "osquery_"
+	socketTimeout        = 10 * time.Second
+)
+
+// conditions mirrors ConditionalItems.plist. Values are untyped because other
+// condition scripts write keys this tool must round-trip unchanged.
+type conditions map[string]any
 
 func main() {
-	var (
-		flQueries    = flag.String("queries", "", "path to line delimited query file")
-		flSocketPath = flag.String("socket", "/var/osquery/osquery.em", "path to osqueryd socket")
-	)
-	flag.Parse()
-
-	if *flQueries == "" {
-		fmt.Println("No query file specified.")
-		flag.Usage()
-		os.Exit(1)
-	}
-
-	var conditions MunkiConditions
-	if err := conditions.Load(); err != nil {
-		if os.IsNotExist(errors.Cause(err)) {
-			conditions = make(MunkiConditions)
-		} else {
-			log.Fatal(err)
+	log.SetFlags(0)
+	log.SetPrefix("osquery-condition: ")
+	if err := run(os.Args[1:]); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			os.Exit(0)
 		}
+		log.Fatal(err)
+	}
+}
+
+func run(args []string) error {
+	flags := flag.NewFlagSet("osquery-condition", flag.ContinueOnError)
+	queriesPath := flags.String("queries", "", "path to line delimited query file")
+	socketPath := flags.String("socket", "/var/osquery/osquery.em", "path to osqueryd socket")
+	showVersion := flags.Bool("version", false, "print the version and exit")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	if *showVersion {
+		fmt.Println(version)
+		return nil
+	}
+	if *queriesPath == "" {
+		flags.Usage()
+		return errors.New("no query file specified")
 	}
 
-	client, err := osquery.NewClient(*flSocketPath, 10*time.Second)
+	queries, err := readQueries(*queriesPath)
 	if err != nil {
-		fmt.Println("Error creating Thrift client: " + err.Error())
-		os.Exit(1)
+		return err
+	}
+
+	client, err := osquery.NewClient(*socketPath, socketTimeout)
+	if err != nil {
+		return fmt.Errorf("connect to osqueryd: %w", err)
 	}
 	defer client.Close()
 
-	// load queries from list
-	queries := readQueries(*flQueries)
-
-	// create a (w)rapped client using our OsqueryClient type.
-	wclient := &OsqueryClient{client}
-
-	resp, err := wclient.RunQueries(queries...)
+	results, err := runQueries(client, queries)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	// range over the response channel and format all the responses as
-	// conditions.
-	res := map[string][]string{}
-	for r := range resp {
-		for k, v := range r {
-			res[k] = append(res[k], v)
-		}
+	// Load only after every query succeeded, so a failed run never rewrites
+	// the plist with partial results.
+	conds, err := loadConditions(conditionalItemsPath)
+	if err != nil {
+		return err
 	}
-
-	for k, v := range res {
-		conditions[fmt.Sprintf("osquery_%s", k)] = v
-	}
-
-	if err := conditions.Save(); err != nil {
-		log.Fatal(err)
-	}
+	conds.merge(results)
+	return saveConditions(conditionalItemsPath, conds)
 }
 
-// read queries from file
-func readQueries(path string) []string {
-	data, err := ioutil.ReadFile(path)
+// readQueries returns one query per non-blank line of the file at path.
+func readQueries(path string) ([]string, error) {
+	f, err := os.Open(path)
 	if err != nil {
-		log.Fatal(err)
+		return nil, fmt.Errorf("read queries: %w", err)
 	}
-	lr := bufio.NewReader(bytes.NewReader(data))
-	var lines []string
-	for {
-		line, _, err := lr.ReadLine()
-		if err == io.EOF {
-			break
+	defer f.Close()
+
+	var queries []string
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		if line := strings.TrimSpace(scanner.Text()); line != "" {
+			queries = append(queries, line)
 		}
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("read queries: %w", err)
+	}
+	return queries, nil
+}
+
+// querier is the slice of *osquery.ExtensionManagerClient that runQueries needs.
+type querier interface {
+	QueryRows(sql string) ([]map[string]string, error)
+}
+
+// runQueries runs every query and groups the returned values by column name,
+// across all rows of all queries.
+func runQueries(q querier, queries []string) (map[string][]string, error) {
+	results := map[string][]string{}
+	for _, sql := range queries {
+		rows, err := q.QueryRows(sql)
 		if err != nil {
-			log.Fatal(err)
+			return nil, fmt.Errorf("query %q: %w", sql, err)
 		}
-		lines = append(lines, string(line))
+		for _, row := range rows {
+			for column, value := range row {
+				results[column] = append(results[column], value)
+			}
+		}
 	}
-	return lines
+	return results, nil
 }
 
-// OsqueryClient wraps the extension client.
-type OsqueryClient struct {
-	*osquery.ExtensionManagerClient
+// merge stores each result column under an osquery_ prefixed key, replacing
+// any value from a previous run and leaving every other key untouched.
+func (c conditions) merge(results map[string][]string) {
+	for column, values := range results {
+		c[keyPrefix+column] = values
+	}
 }
 
-// RunQueries takes one or more SQL queries and returns a channel with all the responses.
-func (c *OsqueryClient) RunQueries(queries ...string) (<-chan map[string]string, error) {
-	responses := make(chan map[string]string)
+// loadConditions reads the plist at path. A missing file yields an empty set,
+// since Munki only creates it when some condition script writes to it.
+func loadConditions(path string) (conditions, error) {
+	data, err := os.ReadFile(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return conditions{}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("load ConditionalItems plist: %w", err)
+	}
 
-	// schedule the queries in a separate goroutine
-	// it doesn't wait for the responses to return.
-	go func() {
-		for _, q := range queries {
-			resp, err := c.Query(q)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			if resp.Status.Code != 0 {
-				log.Printf("got status %d\n", resp.Status.Code)
-				return
-			}
-			for _, r := range resp.Response {
-				responses <- r
-			}
+	conds := conditions{}
+	if _, err := plist.Unmarshal(data, &conds); err != nil {
+		return nil, fmt.Errorf("decode ConditionalItems plist: %w", err)
+	}
+	return conds, nil
+}
+
+// saveConditions writes the plist via a temporary file and a rename, so an
+// interrupted run cannot leave Munki a truncated file.
+func saveConditions(path string, conds conditions) (err error) {
+	data, err := plist.MarshalIndent(conds, plist.XMLFormat, "  ")
+	if err != nil {
+		return fmt.Errorf("encode ConditionalItems plist: %w", err)
+	}
+
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".ConditionalItems-*.plist")
+	if err != nil {
+		return fmt.Errorf("save ConditionalItems plist: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = os.Remove(tmp.Name())
 		}
-		// close the response channel when all queries finish running.
-		close(responses)
 	}()
-	return responses, nil
-}
 
-// MunkiConditions is a data structure to hold confitional information.
-type MunkiConditions map[string]interface{}
-
-// Load populates datastructure with existing conditional information found on disk.
-func (c *MunkiConditions) Load() error {
-	f, err := ioutil.ReadFile(conditionalItemsFile)
-	if err != nil {
-		return errors.Wrap(err, "load ConditionalItems plist")
+	_, err = tmp.Write(data)
+	if err == nil {
+		err = tmp.Chmod(0o644)
 	}
-
-	if _, err := plist.Unmarshal(f, c); err != nil {
-		return errors.Wrap(err, "decode ConditionalItems plist")
+	if closeErr := tmp.Close(); err == nil {
+		err = closeErr
 	}
-	return nil
-}
-
-
-// Save writes to disk to conditional infomation held in variable of type MunkiConditions.
-func (c *MunkiConditions) Save() error {
-	serialized, err := plist.MarshalIndent(c, plist.XMLFormat, "  ")
-	if err != nil {
-		return errors.Wrap(err, "encode ConditionalItems plist")
+	if err == nil {
+		err = os.Rename(tmp.Name(), path)
 	}
-
-	err = ioutil.WriteFile(conditionalItemsFile, serialized, 0644)
 	if err != nil {
-		return errors.Wrap(err, "encode ConditionalItems plist")
+		return fmt.Errorf("save ConditionalItems plist: %w", err)
 	}
 	return nil
 }
