@@ -1,0 +1,19 @@
+[package]
+name = "osquery-condition"
+display-name = "osquery-condition"
+version = "0.1.0"
+identifier = "com.github.hurricanehrndz.osquery-condition"
+publisher = "hurricanehrndz"
+description = "Munki conditions from osquery"
+homepage = "https://github.com/hurricanehrndz/osquery-condition"
+
+# One universal binary (`just dist`) keeps the package usable on Intel and
+# Apple silicon.
+[pkg]
+install-location = "/usr/local"
+files = [{ src = "dist/osquery-condition", dest = "bin/osquery-condition" }]
+
+# The release workflow supplies these paths. embala invokes rcodesign after it
+# builds the package, so the installer signature covers the finished XAR.
+[sign.macos]
+command = "rcodesign sign --p12-file \"$MACOS_INSTALLER_P12\" --p12-password-file \"$MACOS_INSTALLER_P12_PASSWORD_FILE\" $f"
