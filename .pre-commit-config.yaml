@@ -1,0 +1,20 @@
+repos:
+  - repo: local
+    hooks:
+      - id: golangci-lint-fmt
+        name: golangci-lint fmt
+        entry: mise exec -- golangci-lint fmt
+        language: system
+        files: \.go$
+      - id: golangci-lint
+        name: golangci-lint
+        entry: mise exec -- golangci-lint run ./...
+        language: system
+        pass_filenames: false
+        files: (\.go|go\.mod|go\.sum|\.golangci\.yml)$
+      - id: go-mod-tidy
+        name: go mod tidy
+        entry: mise exec -- go mod tidy -diff
+        language: system
+        pass_filenames: false
+        files: (\.go|go\.mod|go\.sum)$

@@ -1,0 +1,82 @@
+# golangci-lint v2 configuration.
+# Docs: https://golangci-lint.run/usage/configuration/
+version: "2"
+run:
+  timeout: 5m
+linters:
+  # Keep golangci-lint's default set (errcheck, govet, ineffassign,
+  # staticcheck, unused) and layer extra checks on top.
+  enable:
+    # Complexity / size guardrails.
+    - gocognit # cognitive complexity per function
+    - cyclop # cyclomatic complexity per function
+    - funlen # function length
+    - nestif # deeply nested if blocks
+    # Error handling.
+    - errorlint # errors.Is/As instead of ==, %w instead of %v
+    - nilerr # returning nil after checking err != nil
+    - nilnil # returning nil, nil
+    # Bug / resource-management guardrails.
+    - bodyclose # unclosed HTTP response bodies
+    - noctx # HTTP requests / exec without a context
+    - gosec # file permissions, temp files, command injection
+    - makezero # append to a non-zero-length slice literal
+    - gocritic # broad bug and style checks (default set)
+    # Keep code current and suppressions honest.
+    - modernize # replace pre-generics / old stdlib idioms
+    - usestdlibvars # http.MethodGet etc. over string literals
+    - depguard # ban superseded packages (see settings)
+    - nolintlint # //nolint must name a linter and say why
+    # Code quality (low noise, high signal).
+    - revive # golint successor: naming, doc comments, etc.
+    - misspell
+    - unconvert
+    - unparam
+  settings:
+    govet:
+      # Catch variables shadowed in inner scopes, e.g. a re-declared `err`.
+      enable:
+        - shadow
+    gocognit:
+      min-complexity: 20
+    cyclop:
+      max-complexity: 15
+    funlen:
+      lines: 60
+      statements: 40
+    nestif:
+      min-complexity: 4
+    depguard:
+      rules:
+        main:
+          deny:
+            - pkg: github.com/pkg/errors
+              desc: 'use errors and fmt.Errorf("...: %w", err)'
+            - pkg: io/ioutil
+              desc: use os and io
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+    gosec:
+      excludes:
+        # G304 flags every os.Open of a variable path; a CLI reads paths
+        # from its own flags by design.
+        - G304
+  exclusions:
+    generated: lax
+    presets:
+      # Close() on read-only files and similar well-known safe ignores.
+      - std-error-handling
+    # Tests are allowed to be long and branchy (table-driven cases, setup).
+    rules:
+      - path: _test\.go
+        linters:
+          - funlen
+          - gocognit
+          - cyclop
+          - nestif
+          - gosec
+formatters:
+  enable:
+    - gofumpt
+    - goimports

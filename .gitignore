@@ -1,9 +1,9 @@
-osquery-condition
-build/
-*.zip
-vendor/
-.envrc
-.devenv/
+# Build output (`just build`, `just dist`, embala)
+/build/
+/dist/
+/release/
+
+# direnv
 .direnv/
 
-build-info.json
+.DS_Store

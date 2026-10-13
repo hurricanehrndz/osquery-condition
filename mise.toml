@@ -1,0 +1,12 @@
+[settings]
+locked = true
+
+[tools]
+go = "1.27.2"
+just = "1.58.0"
+golangci-lint = "2.14.0"
+"aqua:j178/prek" = "0.5.5"
+# Release packaging; CI signs and notarizes, so these are only needed locally
+# to reproduce the release workflow.
+"github:hurricanehrndz/embala" = "0.3.0"
+"github:indygreg/apple-platform-rs" = { version = "apple-codesign/0.29.0", asset_pattern = "apple-codesign-*-macos-universal.tar.gz", os = ["macos"] }
